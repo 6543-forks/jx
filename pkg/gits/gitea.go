@@ -280,9 +280,34 @@ func (p *GiteaProvider) CreateWebHook(data *GitWebHookArguments) error {
 }
 
 func (p *GiteaProvider) ListWebHooks(owner string, repo string) ([]*GitWebHookArguments, error) {
-	webHooks := []*GitWebHookArguments{}
-	return webHooks, fmt.Errorf("ListWebHooks is currently not implemented for Gitea.")
-	// p.Client.ListRepoHooks()
+	hooks, _, err := p.Client.ListRepoHooks(owner, repo, gitea.ListHooksOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	giteaRepo, _, err := p.Client.GetRepo(owner, repo)
+	if err != nil {
+		return nil, err
+	}
+
+	webHooks := make([]*GitWebHookArguments, len(hooks))
+	for i := range hooks {
+		webHooks[i] = toGiteaWebHook(toGiteaRepo(owner, giteaRepo), owner, hooks[i])
+	}
+	return webHooks, err
+}
+
+func toGiteaWebHook(repo *GitRepository, owner string, hook *gitea.Hook) *GitWebHookArguments {
+	if hook == nil {
+		return nil
+	}
+	return &GitWebHookArguments{
+		ID:          hook.ID,
+		Owner:       owner,
+		Repo:        repo,
+		URL:         hook.URL,
+		InsecureSSL: false,
+	}
 }
 
 func (p *GiteaProvider) UpdateWebHook(data *GitWebHookArguments) error {
