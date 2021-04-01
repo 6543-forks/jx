@@ -798,7 +798,23 @@ func (p *GiteaProvider) AcceptInvitation(ID int64) (*github.Response, error) {
 }
 
 func (p *GiteaProvider) GetContent(org string, name string, path string, ref string) (*GitFileContent, error) {
-	return nil, fmt.Errorf("GetContent is currently not implemented for Gitea.")
+	contentsResp, _, err := p.Client.GetContents(org, name, ref, path)
+	if err != nil {
+		return nil, err
+	}
+	return &GitFileContent{
+		Type:        contentsResp.Type,
+		Encoding:    asText(contentsResp.Encoding),
+		Size:        int(contentsResp.Size),
+		Name:        contentsResp.Name,
+		Path:        contentsResp.Path,
+		Content:     asText(contentsResp.Content),
+		Sha:         contentsResp.SHA,
+		Url:         asText(contentsResp.URL),
+		GitUrl:      asText(contentsResp.GitURL),
+		HtmlUrl:     asText(contentsResp.HTMLURL),
+		DownloadUrl: asText(contentsResp.DownloadURL),
+	}, nil
 }
 
 // ShouldForkForPullReques treturns true if we should create a personal fork of this repository
