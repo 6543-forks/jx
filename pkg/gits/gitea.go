@@ -3,6 +3,7 @@ package gits
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -615,26 +616,19 @@ func (p *GiteaProvider) ValidateRepositoryName(org string, name string) error {
 }
 
 func (p *GiteaProvider) UpdateRelease(owner string, repo string, tag string, releaseInfo *GitRelease) error {
-	var release *gitea.Release
-	releases, _, err := p.Client.ListReleases(owner, repo, gitea.ListReleasesOptions{})
-	found := false
-	for _, rel := range releases {
-		if rel.TagName == tag {
-			release = rel
-			found = true
-			break
-		}
+	release, resp, err := p.Client.GetReleaseByTag(owner, repo, tag)
+	if err != nil && (resp == nil || resp.StatusCode != http.StatusNotFound) {
+		return err
 	}
-	flag := false
 
 	// lets populate the release
-	if !found {
+	if release == nil {
 		createRelease := gitea.CreateReleaseOption{
 			TagName:      releaseInfo.TagName,
 			Title:        releaseInfo.Name,
 			Note:         releaseInfo.Body,
-			IsDraft:      flag,
-			IsPrerelease: flag,
+			IsDraft:      false,
+			IsPrerelease: false,
 		}
 		_, _, err = p.Client.CreateRelease(owner, repo, createRelease)
 		return err
@@ -643,8 +637,8 @@ func (p *GiteaProvider) UpdateRelease(owner string, repo string, tag string, rel
 			TagName:      release.TagName,
 			Title:        release.Title,
 			Note:         release.Note,
-			IsDraft:      &flag,
-			IsPrerelease: &flag,
+			IsDraft:      gitea.OptionalBool(false),
+			IsPrerelease: gitea.OptionalBool(false),
 		}
 		if editRelease.Title == "" && releaseInfo.Name != "" {
 			editRelease.Title = releaseInfo.Name
