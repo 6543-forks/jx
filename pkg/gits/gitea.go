@@ -468,7 +468,7 @@ func (p *GiteaProvider) searchIssuesWithOptions(org string, name string, opts gi
 
 func (p *GiteaProvider) fromGiteaIssue(org string, name string, i *gitea.Issue) (*GitIssue, error) {
 	state := string(i.State)
-	labels := []GitLabel{}
+	labels := make([]GitLabel, 0, len(i.Labels))
 	for _, label := range i.Labels {
 		labels = append(labels, toGiteaLabel(label))
 	}
