@@ -472,9 +472,8 @@ func (p *GiteaProvider) fromGiteaIssue(org string, name string, i *gitea.Issue) 
 	for _, label := range i.Labels {
 		labels = append(labels, toGiteaLabel(label))
 	}
-	assignees := []GitUser{}
-	assignee := i.Assignee
-	if assignee != nil {
+	assignees := make([]GitUser, 0, len(i.Assignees))
+	for _, assignee := range i.Assignees {
 		assignees = append(assignees, *toGiteaUser(assignee))
 	}
 	number := int(i.ID)
