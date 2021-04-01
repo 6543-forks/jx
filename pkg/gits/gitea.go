@@ -813,7 +813,23 @@ func (p *GiteaProvider) ListCommits(owner, repo string, opt *ListCommitsArgument
 
 // AddLabelsToIssue adds labels to issues or pulls
 func (p *GiteaProvider) AddLabelsToIssue(owner, repo string, number int, labels []string) error {
-	return fmt.Errorf("AddLabelsToIssue is currently not implemented for Gitea.")
+	repoLabels, _, err := p.Client.ListRepoLabels(owner, repo, gitea.ListLabelsOptions{})
+	if err != nil {
+		return err
+	}
+	// TODO get org labels
+
+	var lIDs []int64
+	for _, giteaLabel := range repoLabels {
+		for _, label := range labels {
+			if label == giteaLabel.Name {
+				lIDs = append(lIDs, giteaLabel.ID)
+			}
+		}
+	}
+
+	_, _, err = p.Client.AddIssueLabels(owner, repo, int64(number), gitea.IssueLabelsOption{Labels: lIDs})
+	return err
 }
 
 // GetLatestRelease fetches the latest release from the git provider for org and name
