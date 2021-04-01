@@ -808,7 +808,36 @@ func (p *GiteaProvider) ShouldForkForPullRequest(originalOwner string, repoName 
 }
 
 func (p *GiteaProvider) ListCommits(owner, repo string, opt *ListCommitsArguments) ([]*GitCommit, error) {
-	return nil, fmt.Errorf("ListCommits is currently not implemented for Gitea.")
+	commits, _, err := p.Client.ListRepoCommits(owner, repo, gitea.ListCommitOptions{
+		ListOptions: gitea.ListOptions{
+			Page:     opt.Page,
+			PageSize: opt.PerPage,
+		},
+		SHA: opt.SHA,
+	})
+	if err != nil {
+		return nil, err
+	}
+	gitCommits := make([]*GitCommit, len(commits))
+	for i := range commits {
+		gitCommits[i] = toGiteaCommits(p.ServerURL(), opt.SHA, commits[i])
+	}
+
+	return gitCommits, err
+}
+
+func toGiteaCommits(serverURL, branch string, commit *gitea.Commit) *GitCommit {
+	if commit == nil {
+		return nil
+	}
+	return &GitCommit{
+		SHA:       commit.SHA,
+		Message:   commit.RepoCommit.Message,
+		Author:    toGiteaUser(serverURL, commit.Author),
+		URL:       commit.HTMLURL,
+		Branch:    branch,
+		Committer: toGiteaUser(serverURL, commit.Committer),
+	}
 }
 
 // AddLabelsToIssue adds labels to issues or pulls
