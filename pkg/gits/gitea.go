@@ -136,11 +136,20 @@ func toGiteaRelease(release *gitea.Release) *GitRelease {
 }
 
 func (p *GiteaProvider) CreateRepository(org string, name string, private bool) (*GitRepository, error) {
-	options := gitea.CreateRepoOption{
-		Name:    name,
-		Private: private,
+	var (
+		repo    *gitea.Repository
+		err     error
+		options = gitea.CreateRepoOption{
+			Name:    name,
+			Private: private,
+		}
+	)
+
+	if len(org) != 0 {
+		repo, _, err = p.Client.CreateOrgRepo(org, options)
 	}
-	repo, _, err := p.Client.CreateRepo(options)
+	repo, _, err = p.Client.CreateRepo(options)
+
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create repository %s/%s due to: %s", org, name, err)
 	}
