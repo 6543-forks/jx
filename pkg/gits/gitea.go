@@ -305,14 +305,40 @@ func toGiteaWebHook(repo *GitRepository, owner string, hook *gitea.Hook) *GitWeb
 		ID:          hook.ID,
 		Owner:       owner,
 		Repo:        repo,
-		URL:         hook.URL,
+		URL:         hook.Config["url"],
+		Secret:      hook.Config["secret"],
 		InsecureSSL: false,
 	}
 }
 
 func (p *GiteaProvider) UpdateWebHook(data *GitWebHookArguments) error {
-	return fmt.Errorf("UpdateWebHook is currently not implemented for Gitea.")
-	// p.Client.EditRepoHook()
+	owner := data.Owner
+	if owner == "" {
+		owner = p.Username
+	}
+	repo := data.Repo.Name
+	if repo == "" {
+		return fmt.Errorf("Missing property Repo")
+	}
+	webhookUrl := data.URL
+	if repo == "" {
+		return fmt.Errorf("Missing property URL")
+	}
+
+	config := map[string]string{
+		"url":          webhookUrl,
+		"content_type": "json",
+	}
+	if data.Secret != "" {
+		config["secret"] = data.Secret
+	}
+
+	_, err := p.Client.EditRepoHook(owner, repo, data.ID, gitea.EditHookOption{
+		Config: config,
+		Events: []string{"create", "push", "pull_request"},
+		Active: gitea.OptionalBool(true),
+	})
+	return err
 }
 
 func (p *GiteaProvider) CreatePullRequest(data *GitPullRequestArguments) (*GitPullRequest, error) {
