@@ -120,14 +120,17 @@ func toGiteaRelease(release *gitea.Release) *GitRelease {
 	for _, asset := range release.Attachments {
 		totalDownloadCount = totalDownloadCount + int(asset.DownloadCount)
 		assets = append(assets, GitReleaseAsset{
+			ID:                 asset.ID,
 			Name:               asset.Name,
 			BrowserDownloadURL: asset.DownloadURL,
 		})
 	}
 	return &GitRelease{
+		ID:            release.ID,
 		Name:          release.Title,
 		TagName:       release.TagName,
 		Body:          release.Note,
+		PreRelease:    release.IsPrerelease,
 		URL:           release.URL,
 		HTMLURL:       release.URL,
 		DownloadCount: totalDownloadCount,
@@ -178,12 +181,20 @@ func (p *GiteaProvider) DeleteRepository(org string, name string) error {
 
 func toGiteaRepo(name string, repo *gitea.Repository) *GitRepository {
 	return &GitRepository{
-		Name:             name,
 		AllowMergeCommit: true,
+		Archived:         repo.Archived,
 		CloneURL:         repo.CloneURL,
-		HTMLURL:          repo.HTMLURL,
-		SSHURL:           repo.SSHURL,
 		Fork:             repo.Fork,
+		HTMLURL:          repo.HTMLURL,
+		HasIssues:        repo.HasIssues,
+		HasProjects:      repo.HasProjects,
+		HasWiki:          repo.HasWiki,
+		ID:               repo.ID,
+		Name:             name,
+		OpenIssueCount:   repo.OpenIssues,
+		Private:          repo.Private,
+		SSHURL:           repo.SSHURL,
+		Stars:            repo.Stars,
 	}
 }
 
@@ -483,7 +494,7 @@ func (p *GiteaProvider) fromGiteaIssue(org string, name string, i *gitea.Issue) 
 	}
 	assignees := make([]GitUser, 0, len(i.Assignees))
 	for _, assignee := range i.Assignees {
-		assignees = append(assignees, *toGiteaUser(assignee))
+		assignees = append(assignees, *toGiteaUser(p.Server.URL, assignee))
 	}
 	number := int(i.ID)
 	return &GitIssue{
@@ -494,7 +505,7 @@ func (p *GiteaProvider) fromGiteaIssue(org string, name string, i *gitea.Issue) 
 		Body:          i.Body,
 		IsPullRequest: i.PullRequest != nil,
 		Labels:        labels,
-		User:          toGiteaUser(i.Poster),
+		User:          toGiteaUser(p.Server.URL, i.Poster),
 		Assignees:     assignees,
 		CreatedAt:     &i.Created,
 		UpdatedAt:     &i.Updated,
@@ -522,8 +533,9 @@ func toGiteaLabel(label *gitea.Label) GitLabel {
 	}
 }
 
-func toGiteaUser(user *gitea.User) *GitUser {
+func toGiteaUser(serverURL string, user *gitea.User) *GitUser {
 	return &GitUser{
+		URL:       fmt.Sprintf("%s/%s", serverURL, user.UserName),
 		Login:     user.UserName,
 		Name:      user.FullName,
 		Email:     user.Email,
@@ -567,7 +579,7 @@ func (p *GiteaProvider) AddPRComment(pr *GitPullRequest, comment string) error {
 	}
 	n := *pr.Number
 	prComment := gitea.CreateIssueCommentOption{
-		Body: asText(&comment),
+		Body: comment,
 	}
 	_, _, err := p.Client.CreateIssueComment(pr.Owner, pr.Repo, int64(n), prComment)
 	return err
