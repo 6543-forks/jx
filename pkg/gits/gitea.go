@@ -886,7 +886,15 @@ func (p *GiteaProvider) GetProjects(owner string, repo string) ([]GitProject, er
 
 //ConfigureFeatures sets specific features as enabled or disabled for owner/repo
 func (p *GiteaProvider) ConfigureFeatures(owner string, repo string, issues *bool, projects *bool, wikis *bool) (*GitRepository, error) {
-	return nil, nil
+	repoResp, _, err := p.Client.EditRepo(owner, repo, gitea.EditRepoOption{
+		HasIssues:   issues,
+		HasWiki:     wikis,
+		HasProjects: projects,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return toGiteaRepo(repo, repoResp), nil
 }
 
 // IsWikiEnabled returns true if a wiki is enabled for owner/repo
