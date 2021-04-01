@@ -622,7 +622,31 @@ func (p *GiteaProvider) ListCommitStatus(org string, repo string, sha string) ([
 }
 
 func (b *GiteaProvider) UpdateCommitStatus(org string, repo string, sha string, status *GitRepoStatus) (*GitRepoStatus, error) {
-	return &GitRepoStatus{}, fmt.Errorf("UpdateCommitStatus is currently not implemented for Gitea.")
+	state := gitea.StatusPending
+	if status.IsFailed() {
+		state = gitea.StatusFailure
+	} else if status.IsSuccess() {
+		state = gitea.StatusSuccess
+	}
+
+	newStatus, _, err := b.Client.CreateStatus(org, repo, sha, gitea.CreateStatusOption{
+		State:       state,
+		TargetURL:   status.TargetURL,
+		Description: status.Description,
+		Context:     status.Context,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &GitRepoStatus{
+		ID:          fmt.Sprint(newStatus.ID),
+		Context:     newStatus.Context,
+		URL:         newStatus.URL,
+		State:       string(newStatus.State),
+		TargetURL:   newStatus.TargetURL,
+		Description: newStatus.Description,
+	}, err
 }
 
 func (p *GiteaProvider) RenameRepository(org string, name string, newName string) (*GitRepository, error) {
