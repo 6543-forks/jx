@@ -91,31 +91,30 @@ func (p *GiteaProvider) ListReleases(org string, name string) ([]*GitRelease, er
 		owner = p.Username
 	}
 	answer := []*GitRelease{}
-	repos, _, err := p.Client.ListReleases(owner, name, gitea.ListReleasesOptions{})
+	releases, _, err := p.Client.ListReleases(owner, name, gitea.ListReleasesOptions{})
 	if err != nil {
 		return answer, err
 	}
-	for _, repo := range repos {
-		answer = append(answer, toGiteaRelease(org, name, repo))
+	for _, r := range releases {
+		answer = append(answer, toGiteaRelease(r))
 	}
 	return answer, nil
 }
 
 // GetRelease returns the release info for org, repo name and tag
 func (p *GiteaProvider) GetRelease(org string, name string, tag string) (*GitRelease, error) {
-	releases, err := p.ListReleases(org, name)
+	owner := org
+	if owner == "" {
+		owner = p.Username
+	}
+	release, _, err := p.Client.GetReleaseByTag(owner, name, tag)
 	if err != nil {
-		return nil, errors2.WithStack(err)
+		return nil, err
 	}
-	for _, release := range releases {
-		if release.TagName == tag {
-			return release, nil
-		}
-	}
-	return nil, nil
+	return toGiteaRelease(release), nil
 }
 
-func toGiteaRelease(org string, name string, release *gitea.Release) *GitRelease {
+func toGiteaRelease(release *gitea.Release) *GitRelease {
 	totalDownloadCount := 0
 	assets := make([]GitReleaseAsset, 0)
 	for _, asset := range release.Attachments {
@@ -806,7 +805,7 @@ func (p *GiteaProvider) GetLatestRelease(org string, name string) (*GitRelease, 
 	if err != nil {
 		return nil, errors2.Wrapf(err, "getting releases for %s/%s", org, name)
 	}
-	return toGiteaRelease(org, name, releases[0]), nil
+	return toGiteaRelease(releases[0]), nil
 }
 
 // UploadReleaseAsset will upload an asset to org/repo to a release with id, giving it a name, it will return the release asset from the git provider
